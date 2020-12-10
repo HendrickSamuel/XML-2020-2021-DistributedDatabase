@@ -1,4 +1,4 @@
---set serveroutput on
+set serveroutput on;
 
 create database link mylink2
 connect to DB2 Identified by DB2
@@ -32,7 +32,7 @@ using '(DESCRIPTION=
         (CONNECT_DATA= (SERVER=DEDICATED)
         (SERVICE_NAME=xe)))';
 
-------------------PACKAGE-------------
+/* -- Package --*/
 
 create or replace PACKAGE ETUDIANTPACKAGE AS 
 
@@ -49,7 +49,9 @@ create or replace PACKAGE ETUDIANTPACKAGE AS
     Type TypeTabEtudiant is Table of TypeEtudiant index by binary_integer;
     Function SelectEtudiant return TypeTabEtudiant;
     
-    PROCEDURE INSERTETUDIANT(newEtudiants in TypeEtudiant);
+    PROCEDURE INSERTETUDIANT(newStudent TypeEtudiant);
+    PROCEDURE UPDATEETUDIANT(newStudent TypeEtudiant, oldStudent TypeEtudiant);
+    PROCEDURE DELETEETUDIANT(oldStudent TypeEtudiant);
 
 END ETUDIANTPACKAGE;
 
@@ -73,178 +75,145 @@ create or replace PACKAGE BODY ETUDIANTPACKAGE AS
     END SelectEtudiant;
     
     PROCEDURE INSERTETUDIANT 
-    (newEtudiants in TypeEtudiant) as
+    (newStudent TypeEtudiant) as
     
     BEGIN
-        if(newEtudiants.cp < 5000) then
-            insert into etudiant@mylink2 (idetudiant, nom, prenom, section) values (newEtudiants.idetudiant, newEtudiants.nom, newEtudiants.prenom, newEtudiants.section);
-            insert into etudiant@mylink3 (idetudiant, rue, numero, localite, cp) values (newEtudiants.idetudiant, newEtudiants.rue, newEtudiants.numero, newEtudiants.localite, newEtudiants.cp);
+   
+        if(newStudent.cp < 5000) then
+            insert into etudiant@mylink2 (idetudiant, nom, prenom, section) values (newStudent.idetudiant, newStudent.nom, newStudent.prenom, newStudent.section);
+            insert into etudiant@mylink3 (idetudiant, rue, numero, localite, cp) values (newStudent.idetudiant, newStudent.rue, newStudent.numero, newStudent.localite, newStudent.cp);
         else
-            insert into etudiant@mylink4 (idetudiant, nom, prenom, section) values (newEtudiants.idetudiant, newEtudiants.nom, newEtudiants.prenom, newEtudiants.section);
-            insert into etudiant@mylink5 (idetudiant, rue, numero, localite, cp) values (newEtudiants.idetudiant, newEtudiants.rue, newEtudiants.numero, newEtudiants.localite, newEtudiants.cp);
+            insert into etudiant@mylink4 (idetudiant, nom, prenom, section) values (newStudent.idetudiant, newStudent.nom, newStudent.prenom, newStudent.section);
+            insert into etudiant@mylink5 (idetudiant, rue, numero, localite, cp) values (newStudent.idetudiant, newStudent.rue, newStudent.numero, newStudent.localite, newStudent.cp);
         end if;
         COMMIT;
         
         exception
     when others then raise;
     END INSERTETUDIANT;
+    
+PROCEDURE DELETEETUDIANT(oldStudent TypeEtudiant) AS
+BEGIN
+    DELETE FROM etudiant@mylink2 WHERE idetudiant = oldStudent.idetudiant;
+    DELETE FROM etudiant@mylink3 WHERE idetudiant = oldStudent.idetudiant;
+    DELETE FROM etudiant@mylink4 WHERE idetudiant = oldStudent.idetudiant;
+    DELETE FROM etudiant@mylink5 WHERE idetudiant = oldStudent.idetudiant;
+    COMMIT;
+end DELETEETUDIANT;
+    
+PROCEDURE UPDATEETUDIANT
+(newStudent TypeEtudiant,oldStudent TypeEtudiant) as
+
+BEGIN
+
+    if(oldStudent.cp < 5000 AND newStudent.cp >= 5000 OR oldStudent.cp >= 5000 AND newStudent.cp < 5000) then
+        ETUDIANTPACKAGE.DELETEETUDIANT(oldStudent);
+        ETUDIANTPACKAGE.INSERTETUDIANT(newStudent);
+    else
+        if(oldStudent.cp < 5000) then
+            update etudiant@mylink2 set nom = newStudent.nom, prenom = newStudent.prenom, section = newStudent.section where idetudiant = oldStudent.idetudiant;
+            update etudiant@mylink3 set rue = newStudent.rue, numero = newStudent.numero, localite = newStudent.localite, cp = newStudent.cp where idetudiant = oldStudent.idetudiant;        
+        else
+            update etudiant@mylink4 set nom = newStudent.nom, prenom = newStudent.prenom, section = newStudent.section where idetudiant = oldStudent.idetudiant;
+            update etudiant@mylink5 set rue = newStudent.rue, numero = newStudent.numero, localite = newStudent.localite, cp = newStudent.cp where idetudiant = oldStudent.idetudiant;
+        end if;
+    end if;
+
+end UPDATEETUDIANT;
 
 END ETUDIANTPACKAGE;
 
 
 
--------------------------TEST------------------
+/* -- Population de la base de donnée--*/
+
 set serveroutput on;
 
-
-
 declare
-    newetudiant ETUDIANTPACKAGE.TypeEtudiant;
+    newStudentToInsert ETUDIANTPACKAGE.TypeEtudiant;
     begin
-        newetudiant.idetudiant := '#etud-01'; newetudiant.nom := 'Beck'; newetudiant.prenom := 'Thomas'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du lapin'; newetudiant.numero := 9; newetudiant.localite := 'Seraing'; newetudiant.cp := 4000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-01'; newStudentToInsert.nom := 'Beck'; newStudentToInsert.prenom := 'Thomas'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du lapin'; newStudentToInsert.numero := 9; newStudentToInsert.localite := 'Seraing'; newStudentToInsert.cp := 4000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-02'; newetudiant.nom := 'Collette'; newetudiant.prenom := 'Loic'; newetudiant.section := '2302';
-        newetudiant.rue := 'De la revision'; newetudiant.numero := 44; newetudiant.localite := 'Chennee'; newetudiant.cp := 4032;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-02'; newStudentToInsert.nom := 'Collette'; newStudentToInsert.prenom := 'Loic'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'De la revision'; newStudentToInsert.numero := 44; newStudentToInsert.localite := 'Chennee'; newStudentToInsert.cp := 4032;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-03'; newetudiant.nom := 'Delaval'; newetudiant.prenom := 'Kevin'; newetudiant.section := '2302';
-        newetudiant.rue := 'Francois Michoel'; newetudiant.numero := 222; newetudiant.localite := 'Sart-lez-Spa'; newetudiant.cp := 4845;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-03'; newStudentToInsert.nom := 'Delaval'; newStudentToInsert.prenom := 'Kevin'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Francois Michoel'; newStudentToInsert.numero := 222; newStudentToInsert.localite := 'Sart-lez-Spa'; newStudentToInsert.cp := 4845;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-04'; newetudiant.nom := 'Brandt'; newetudiant.prenom := 'Fabian'; newetudiant.section := '2302';
-        newetudiant.rue := 'Haies de la brassine'; newetudiant.numero := 24; newetudiant.localite := 'Neupre'; newetudiant.cp := 4120;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-04'; newStudentToInsert.nom := 'Brandt'; newStudentToInsert.prenom := 'Fabian'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Haies de la brassine'; newStudentToInsert.numero := 24; newStudentToInsert.localite := 'Neupre'; newStudentToInsert.cp := 4120;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-05'; newetudiant.nom := 'Khamana bantu'; newetudiant.prenom := 'Benedict'; newetudiant.section := '2302';
-        newetudiant.rue := 'Route dhonneux'; newetudiant.numero := 41; newetudiant.localite := 'Heusy'; newetudiant.cp := 4802;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-05'; newStudentToInsert.nom := 'Khamana bantu'; newStudentToInsert.prenom := 'Benedict'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Route dhonneux'; newStudentToInsert.numero := 41; newStudentToInsert.localite := 'Heusy'; newStudentToInsert.cp := 4802;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-06'; newetudiant.nom := 'John'; newetudiant.prenom := 'Doe'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 4000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-06'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Doe'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 4000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-07'; newetudiant.nom := 'John'; newetudiant.prenom := 'Doe'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 4000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-07'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Doe'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 4000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-08'; newetudiant.nom := 'John'; newetudiant.prenom := 'Doe'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 4000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-08'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Doe'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 4000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-09'; newetudiant.nom := 'John'; newetudiant.prenom := 'Doe'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 4000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-09'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Doe'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 4000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-10'; newetudiant.nom := 'John'; newetudiant.prenom := 'Doe'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 4000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);     
+        newStudentToInsert.idetudiant := '#etud-10'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Doe'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 4000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);     
 
-        newetudiant.idetudiant := '#etud-11'; newetudiant.nom := 'John'; newetudiant.prenom := 'One'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-11'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'One'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-12'; newetudiant.nom := 'John'; newetudiant.prenom := 'Two'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-12'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Two'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-13'; newetudiant.nom := 'John'; newetudiant.prenom := 'Three'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-13'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Three'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-14'; newetudiant.nom := 'John'; newetudiant.prenom := 'Four'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-14'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Four'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-15'; newetudiant.nom := 'John'; newetudiant.prenom := 'Five'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-15'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Five'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-16'; newetudiant.nom := 'John'; newetudiant.prenom := 'Six'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-16'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Six'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-17'; newetudiant.nom := 'John'; newetudiant.prenom := 'Seven'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-17'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Seven'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-18'; newetudiant.nom := 'John'; newetudiant.prenom := 'Eight'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-18'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Eight'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-19'; newetudiant.nom := 'John'; newetudiant.prenom := 'Nine'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-19'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Nine'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
-        newetudiant.idetudiant := '#etud-20'; newetudiant.nom := 'John'; newetudiant.prenom := 'Ten'; newetudiant.section := '2302';
-        newetudiant.rue := 'Du soleil'; newetudiant.numero := 320; newetudiant.localite := 'Liege'; newetudiant.cp := 6000;             
-        ETUDIANTPACKAGE.insertetudiant(newetudiant);
+        newStudentToInsert.idetudiant := '#etud-20'; newStudentToInsert.nom := 'John'; newStudentToInsert.prenom := 'Ten'; newStudentToInsert.section := '2302';
+        newStudentToInsert.rue := 'Du soleil'; newStudentToInsert.numero := 320; newStudentToInsert.localite := 'Liege'; newStudentToInsert.cp := 6000;             
+        ETUDIANTPACKAGE.insertetudiant(newStudentToInsert);
 
 exception
 when others then
     dbms_output.put_line('erreur insert etudiant');
 end;
 
-/*
-declare
-    v_return packageetudiant.typetabetudiant;
-    begin
-        v_return := packageetudiant.selectetudiant();
-        for i in v_return.first..v_return.last
-        loop
-            DBMS_OUTPUT.PUT_LINE('Nom : ' || v_return(i).nom || ' ' || 'Prenom : ' || v_return(i).prenom || ' ');
-        end loop;
-    exception
-        when others then
-            DBMS_OUTPUT.PUT_LINE('Erreur ');
-    end;
-  */      
-  
-
-/*
-DECLARE
-  NEWETUDIANTS etudiant%rowtype;
-  OLDETUDIANT etudiant%rowtype;
-BEGIN
- 
-  select etudiant.idetudiant@mylink2, nom, prenom, section, rue, numero, localite, cp into OLDETUDIANT from etudiant@mylink2, etudiant@mylink3 
-  where etudiant.idetudiant@mylink2 = etudiant.idetudiant@mylink3
-  and etudiant.idetudiant@mylink2 = 23;
-  
-  select etudiant.idetudiant@mylink2, nom, prenom, section, rue, numero, localite, cp into NEWETUDIANTS from etudiant@mylink2, etudiant@mylink3 
-  where etudiant.idetudiant@mylink2 = etudiant.idetudiant@mylink3
-  and etudiant.idetudiant@mylink2 = 23;
-  NEWETUDIANTS.nom := 'Samuel';
-
-  UPDATEETUDIANT(
-    NEWETUDIANTS => NEWETUDIANTS,
-    OLDETUDIANT => OLDETUDIANT
-  );
---rollback; 
-END;
-
-
-DECLARE
-    v_Return DB1.etudiantpackage.TypeTabEtudiant;
-BEGIN 
-    v_Return := etudiantpackage.selectetudiant();
-    
-    FOR i IN v_Return.FIRST..v_Return.LAST
-    LOOP
-        DBMS_OUTPUT.PUT_LINE('[Nom: ' || v_Return(i).nom || ']' );
-    END LOOP;
-    
-    EXCEPTION 
-        WHEN OTHERS THEN 
-        DBMS_OUTPUT.PUT_LINE('Erreur : '||SQLERRM);
-END;
-*/
-
-
-/*
-select * from etudiant@mylink2;
-select * from etudiant@mylink3;
-select * from etudiant@mylink4;
-select * from etudiant@mylink5;
-*/
