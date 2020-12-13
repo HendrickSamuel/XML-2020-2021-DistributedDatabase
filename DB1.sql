@@ -217,3 +217,39 @@ when others then
     dbms_output.put_line('erreur insert etudiant');
 end;
 
+
+
+set serveroutput on;
+
+DECLARE
+    v_Return DB1.etudiantpackage.TypeTabEtudiant;
+BEGIN 
+    v_Return := etudiantpackage.selectetudiant();
+    
+    FOR i IN v_Return.FIRST..v_Return.LAST
+    LOOP
+        DBMS_OUTPUT.PUT_LINE('[Nom: ' || v_Return(i).nom || ']' );
+    END LOOP;
+    
+    EXCEPTION 
+        WHEN OTHERS THEN 
+        DBMS_OUTPUT.PUT_LINE('Erreur : '||SQLERRM);
+END;
+
+declare
+    newetudiant etudiantpackage.typeetudiant;
+    begin
+        newetudiant.idetudiant := 'jean';
+        newetudiant.nom := 'jean';
+        newetudiant.prenom := 'Thomas';
+        newetudiant.section := 'jgf';
+        newetudiant.rue := 'j';
+        newetudiant.numero := 1156;
+        newetudiant.localite := 'Liege';
+        newetudiant.cp := 2000;
+        
+        etudiantpackage.INSERTETUDIANT(newetudiant);
+exception
+when others then
+    dbms_output.put_line('erreur insert etudiant: ' || SQLERRM);
+end;
