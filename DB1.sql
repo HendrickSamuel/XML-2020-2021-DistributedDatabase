@@ -32,6 +32,17 @@ using '(DESCRIPTION=
         (CONNECT_DATA= (SERVER=DEDICATED)
         (SERVICE_NAME=xe)))';
 
+
+/* -- VUE -- */
+CREATE OR replace VIEW students AS 
+select idetudiant,nom, prenom, section, rue, numero, localite, cp bulk collect into tabretour 
+from etudiant@mylink2 link2 JOIN etudiant@mylink3 link3 USING(idetudiant)
+union
+select idetudiant,nom, prenom, section, rue, numero, localite, cp
+from etudiant@mylink4 link4 JOIN etudiant@mylink5 link5 USING(idetudiant);
+
+
+
 /* -- Package --*/
 
 create or replace PACKAGE ETUDIANTPACKAGE AS 
@@ -228,7 +239,14 @@ BEGIN
     
     FOR i IN v_Return.FIRST..v_Return.LAST
     LOOP
-        DBMS_OUTPUT.PUT_LINE('[Nom: ' || v_Return(i).nom || ']' );
+        DBMS_OUTPUT.PUT_LINE('---- START Student ----' );
+        DBMS_OUTPUT.PUT_LINE('[IdEtudiant: ' || v_Return(i).idetudiant || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Nom: ' || v_Return(i).nom || ']' || '[Prenom: ' || v_Return(i).prenom || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Section: ' || v_Return(i).section || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Rue: ' || v_Return(i).rue || ']' || '[Numero: ' || v_Return(i).numero || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Localite: ' || v_Return(i).localite || ']' || '[Code postal: ' || v_Return(i).cp || ']');
+        DBMS_OUTPUT.PUT_LINE('---- END Student ----' );
+        dbms_output.new_line();
     END LOOP;
     
     EXCEPTION 
@@ -239,11 +257,11 @@ END;
 declare
     newetudiant etudiantpackage.typeetudiant;
     begin
-        newetudiant.idetudiant := 'jean';
-        newetudiant.nom := 'jean';
-        newetudiant.prenom := 'Thomas';
-        newetudiant.section := 'jgf';
-        newetudiant.rue := 'j';
+        newetudiant.idetudiant := '#etud-21';
+        newetudiant.nom := 'Jean';
+        newetudiant.prenom := 'Pierre';
+        newetudiant.section := 'Gestion';
+        newetudiant.rue := 'Du pasteur';
         newetudiant.numero := 1156;
         newetudiant.localite := 'Liege';
         newetudiant.cp := 2000;
@@ -253,3 +271,39 @@ exception
 when others then
     dbms_output.put_line('erreur insert etudiant: ' || SQLERRM);
 end;
+
+-- UPDATE 
+
+set serveroutput on
+DECLARE
+    v_Return DB1.etudiantpackage.TypeTabEtudiant;
+    
+    updatedStudent DB1.etudiantpackage.TypeEtudiant;
+BEGIN
+    SELECT * bulk collect into v_Return
+    FROM Students WHERE idetudiant = '#etud-01';
+    
+    FOR i IN v_Return.FIRST..v_Return.LAST
+    LOOP
+        DBMS_OUTPUT.PUT_LINE('---- START Student ----' );
+        DBMS_OUTPUT.PUT_LINE('[IdEtudiant: ' || v_Return(i).idetudiant || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Nom: ' || v_Return(i).nom || ']' || '[Prenom: ' || v_Return(i).prenom || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Section: ' || v_Return(i).section || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Rue: ' || v_Return(i).rue || ']' || '[Numero: ' || v_Return(i).numero || ']' );
+        DBMS_OUTPUT.PUT_LINE('[Localite: ' || v_Return(i).localite || ']' || '[Code postal: ' || v_Return(i).cp || ']');
+        DBMS_OUTPUT.PUT_LINE('---- END Student ----' );
+        dbms_output.new_line();
+    END LOOP;
+    
+    updatedStudent := v_Return(1);
+    updatedStudent.cp := 6000;
+    
+    DB1.etudiantpackage.updateetudiant(updatedStudent, v_Return(1));
+    COMMIT;
+    
+
+    
+    EXCEPTION 
+        WHEN OTHERS THEN 
+        DBMS_OUTPUT.PUT_LINE('Erreur : '||SQLERRM);
+END;
